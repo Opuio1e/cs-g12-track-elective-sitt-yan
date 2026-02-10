@@ -15,18 +15,38 @@ import os
 from pathlib import Path
 
 
+
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
+
+
+
+def _read_env_value(env_file, key):
+    if not env_file.exists():
+        return None
+    for line in env_file.read_text().splitlines():
+        line = line.strip()
+        if not line or line.startswith('#') or '=' not in line:
+            continue
+        current_key, value = line.split('=', 1)
+        if current_key.strip() == key:
+            return value.strip().strip("'").strip('\"')
+    return None
+
 
 
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/3.1/howto/deployment/checklist/
 
-# SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = os.environ.get('MY_SECRET_KEY')  # Consider using your secret key
-
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+DEBUG = os.environ.get('DEBUG', 'True').lower() == 'true'
+
+# SECURITY WARNING: keep the secret key used in production secret!
+_secret_key_from_env = os.environ.get('MY_SECRET_KEY')
+_secret_key_from_dotenv = _read_env_value(BASE_DIR / '.env', 'MY_SECRET_KEY')
+if not DEBUG and not (_secret_key_from_env or _secret_key_from_dotenv):
+    raise ValueError('MY_SECRET_KEY environment variable is required when DEBUG is False.')
+SECRET_KEY = _secret_key_from_env or _secret_key_from_dotenv or 'dev-only-insecure-secret-key'
 
 # ALLOWED_HOSTS = ['smswithdjango.herokuapp.com']
 ALLOWED_HOSTS = ['*']  # Not recommended but useful in dev mode
