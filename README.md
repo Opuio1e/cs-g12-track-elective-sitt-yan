@@ -149,7 +149,23 @@ ALLOWED_HOSTS = []
 *Do not use the fault allowed settings in this repo. It has security risk!*
 
 
-**6. Now Run Server**
+**6. Configure environment variables (recommended)**
+
+Set the Django secret key using the exact variable name used by this project:
+
+For Mac/Linux:
+```bash
+export MY_SECRET_KEY='replace-with-a-secure-secret-key'
+```
+
+For Windows (PowerShell):
+```powershell
+$env:MY_SECRET_KEY='replace-with-a-secure-secret-key'
+```
+
+If `MY_SECRET_KEY` is not set, development falls back to a local default key. For production (`DEBUG=False`), make sure `MY_SECRET_KEY` is set in your environment or `.env` file.
+
+**7. Now Run Server**
 
 Command for PC:
 ```python
@@ -166,7 +182,7 @@ Command for Linux:
 $ python3 manage.py runserver
 ```
 
-**7. Login Credentials**
+**8. Login Credentials**
 
 Create Super User (HOD)
 Command for PC:
