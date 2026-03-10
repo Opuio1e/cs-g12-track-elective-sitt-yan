@@ -262,6 +262,22 @@ def staff_view_notification(request):
     return render(request, "staff_template/staff_view_notification.html", context)
 
 
+def staff_view_student_self_reports(request):
+    staff = get_object_or_404(Staff, admin=request.user)
+    selected_status = request.GET.get('status', 'all')
+    reports = StudentAttendanceSelfReport.objects.select_related(
+        'student__admin', 'student__course'
+    ).filter(student__course=staff.course)
+    if selected_status in {'present', 'absent'}:
+        reports = reports.filter(status=selected_status)
+    context = {
+        'reports': reports,
+        'selected_status': selected_status,
+        'page_title': 'Student Self Attendance Reports'
+    }
+    return render(request, "staff_template/student_self_reports.html", context)
+
+
 def staff_add_result(request):
     staff = get_object_or_404(Staff, admin=request.user)
     subjects = Subject.objects.filter(staff=staff)

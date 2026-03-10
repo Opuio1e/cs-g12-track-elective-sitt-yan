@@ -5,7 +5,7 @@
 <head>
     <meta charset="utf-8">
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
-    <title>Student Management System</title>
+    <title>Sitt Yan Student Management System</title>
     <!-- Tell the browser to be responsive to screen width -->
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <!-- Font Awesome -->
@@ -27,36 +27,63 @@
     <link rel="stylesheet" href="{% static 'plugins/daterangepicker/daterangepicker.css'%} ">
     <!-- summernote -->
     <link rel="stylesheet" href="{% static 'plugins/summernote/summernote-bs4.css'%} ">
-    <!-- Google Font: Source Sans Pro -->
-    <link href="https://fonts.googleapis.com/css?family=Source+Sans+Pro:300,400,400i,700" rel="stylesheet">
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="{% static 'css/modern-ui.css' %}">
     {% block custom_css %}
 
     {% endblock custom_css %}
 </head>
 
-<body class="hold-transition sidebar-mini layout-fixed">
+<body class="hold-transition layout-top-nav modern-ui">
     <div class="wrapper">
 
         <!-- Navbar -->
         <nav class="main-header navbar navbar-expand navbar-white navbar-light">
-            <!-- Left navbar links -->
-            <ul class="navbar-nav">
+            <ul class="navbar-nav align-items-center">
                 <li class="nav-item">
-                    <a class="nav-link" data-widget="pushmenu" href="#"><i class="fas fa-bars"></i></a>
+                    <a class="navbar-brand top-brand" href="{% if request.user.user_type == '1' %}{% url 'admin_home' %}{% elif request.user.user_type == '2' %}{% url 'staff_home' %}{% else %}{% url 'student_home' %}{% endif %}">Sitt Yan SMS</a>
                 </li>
-
+                <li class="nav-item dropdown top-menu-dropdown">
+                    <a class="nav-link top-menu-toggle" data-toggle="dropdown" href="#" aria-expanded="false">
+                        <i class="fas fa-bars mr-2"></i>Menu
+                    </a>
+                    {% include "main_app/topbar_menu.html" %}
+                </li>
             </ul>
 
+            <ul class="navbar-nav mx-auto top-quick-actions align-items-center">
+                {% if request.user.user_type == '1' %}
+                <li class="nav-item"><a class="nav-link top-quick-link" href="{% url 'manage_student' %}"><i class="fas fa-user-graduate mr-1"></i>Students</a></li>
+                <li class="nav-item"><a class="nav-link top-quick-link" href="{% url 'manage_staff' %}"><i class="fas fa-users mr-1"></i>Staff</a></li>
+                <li class="nav-item"><a class="nav-link top-quick-link" href="{% url 'manage_course' %}"><i class="fas fa-book mr-1"></i>Courses</a></li>
+                <li class="nav-item"><a class="nav-link top-quick-link" href="{% url 'admin_view_attendance' %}"><i class="fas fa-clipboard-check mr-1"></i>Attendance</a></li>
+                <li class="nav-item"><a class="nav-link top-quick-link" href="{% url 'admin_view_student_self_reports' %}"><i class="fas fa-user-clock mr-1"></i>Self Reports</a></li>
+                {% elif request.user.user_type == '2' %}
+                <li class="nav-item"><a class="nav-link top-quick-link" href="{% url 'staff_take_attendance' %}"><i class="fas fa-clipboard-list mr-1"></i>Take Attendance</a></li>
+                <li class="nav-item"><a class="nav-link top-quick-link" href="{% url 'staff_add_result' %}"><i class="fas fa-plus-circle mr-1"></i>Add Result</a></li>
+                <li class="nav-item"><a class="nav-link top-quick-link" href="{% url 'staff_view_notification' %}"><i class="fas fa-bell mr-1"></i>Notifications</a></li>
+                <li class="nav-item"><a class="nav-link top-quick-link" href="{% url 'staff_view_student_self_reports' %}"><i class="fas fa-user-clock mr-1"></i>Self Reports</a></li>
+                {% else %}
+                <li class="nav-item"><a class="nav-link top-quick-link" href="{% url 'student_view_attendance' %}"><i class="fas fa-clipboard-check mr-1"></i>Attendance</a></li>
+                <li class="nav-item"><a class="nav-link top-quick-link" href="{% url 'student_view_result' %}"><i class="fas fa-chart-line mr-1"></i>Results</a></li>
+                <li class="nav-item"><a class="nav-link top-quick-link" href="{% url 'student_view_notification' %}"><i class="fas fa-bell mr-1"></i>Notifications</a></li>
+                {% endif %}
+            </ul>
 
+            <ul class="navbar-nav ml-auto align-items-center">
+                <li class="nav-item top-user-name mr-2">{{ request.user.first_name }} {{ request.user.last_name }}</li>
+                <li class="nav-item">
+                    <a href="{% url 'user_logout' %}" class="nav-link top-logout" onclick="return confirm('Your session would be terminated.\n\nProceed?')">
+                        <i class="fas fa-sign-out-alt mr-1"></i>Logout
+                    </a>
+                </li>
+            </ul>
         </nav>
         <!-- /.navbar -->
 
-        <!-- Main Sidebar Container -->
-          
- 
-        {% include "main_app/sidebar_template.html" with user=user %}
-
-      
         <div class="content-wrapper">
 
             <!-- Content Wrapper. Contains page content -->
@@ -148,6 +175,14 @@
     <script src="{% static 'dist/js/pages/dashboard.js'%} "></script>
     <!-- AdminLTE for demo purposes -->
     <script src="{% static 'dist/js/demo.js'%} "></script>
+    <script>
+        (function() {
+            document.querySelectorAll('.content .card, .content .small-box').forEach(function(el, idx) {
+                el.classList.add('dynamic-fade');
+                el.style.animationDelay = (idx * 40) + 'ms';
+            });
+        })();
+    </script>
     {% block custom_js %}
 
     {% endblock custom_js %}

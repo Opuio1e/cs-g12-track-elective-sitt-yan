@@ -5,27 +5,28 @@
 <head>
     <meta charset="utf-8">
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
-    <title>AdminLTE 3 | Log in</title>
+    <title>Sitt Yan Student Management System | Log in</title>
     <!-- Tell the browser to be responsive to screen width -->
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <!-- Font Awesome -->
     <link rel="stylesheet" href="{% static 'plugins/fontawesome-free/css/all.min.css' %}">
     <!-- Ionicons -->
-    <link rel="stylesheet" href="{% static 'https://code.ionicframework.com/ionicons/2.0.1/css/ionicons.min.css' %}">
+    <link rel="stylesheet" href="https://code.ionicframework.com/ionicons/2.0.1/css/ionicons.min.css">
     <!-- icheck bootstrap -->
     <link rel="stylesheet" href="{% static 'plugins/icheck-bootstrap/icheck-bootstrap.min.css' %}">
     <!-- Theme style -->
     <link rel="stylesheet" href="{% static 'dist/css/adminlte.min.css' %}">
-    <!-- Google Font: Source Sans Pro -->
-    <link href="https://fonts.googleapis.com/css?family=Source+Sans+Pro:300,400,400i,700" rel="stylesheet">
-    <!-- Google Recaptcha     -->
-    <script src="https://www.google.com/recaptcha/api.js" async defer></script>
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="{% static 'css/modern-ui.css' %}">
 </head>
 
-<body class="hold-transition login-page">
+<body class="hold-transition login-page modern-ui">
     <div class="login-box">
         <div class="login-logo">
-            <a href="../../index2.html"><b>Admin</b>LTE</a>
+            <a href="/"><span>Sitt Yan SMS</span></a>
 
         </div>
         <!-- /.login-logo -->
@@ -61,10 +62,6 @@
                             </div>
                         </div>
                     </div>
-                    <div class="input-group mb-3">
-                        <div class="g-recaptcha" data-sitekey="6LfswtgZAAAAAJ7bhwqZZtDpBsc75ekH6FWA4Fnt"></div>
-
-                    </div>
                     <div class="row">
                         <div class="col-8">
                             <div class="icheck-primary">
@@ -84,9 +81,27 @@
                     </div>
                 </form>
 
+                <div class="text-center my-3" style="font-weight:600;color:#6b5fa6;">or</div>
+                <div class="mb-3">
+                    <button type="button" id="face-id-login" class="btn btn-secondary btn-block">
+                        <i class="fas fa-face-smile mr-1"></i>Sign In with Face Recognition
+                    </button>
+                </div>
+                <div id="face-login-panel" class="mb-3" style="display: none;">
+                    <video id="face-login-video" autoplay playsinline class="w-100" style="border-radius: 8px;"></video>
+                    <canvas id="face-login-canvas" style="display: none;"></canvas>
+                    <div class="mt-2" style="display: flex; gap: 8px;">
+                        <button type="button" id="face-login-capture" class="btn btn-primary btn-sm">Capture and Login</button>
+                        <button type="button" id="face-login-cancel" class="btn btn-default btn-sm">Cancel</button>
+                    </div>
+                </div>
+
 
                 <p class="mb-1">
                     <a href="{% url 'password_reset' %}">I forgot my password</a>
+                </p>
+                <p class="mb-0">
+                    <a href="{% url 'user_signup' %}">Create a new student account</a>
                 </p>
 
             </div>
@@ -101,6 +116,120 @@
     <script src="{% static 'plugins/bootstrap/js/bootstrap.bundle.min.js' %}"></script>
     <!-- AdminLTE App -->
     <script src="{% static 'dist/js/adminlte.min.js' %}"></script>
+    <script>
+        function getCookie(name) {
+            const value = '; ' + document.cookie;
+            const parts = value.split('; ' + name + '=');
+            if (parts.length === 2) {
+                return parts.pop().split(';').shift();
+            }
+            return null;
+        }
+
+        const faceLoginButton = document.getElementById('face-id-login');
+        const captureButton = document.getElementById('face-login-capture');
+        const cancelButton = document.getElementById('face-login-cancel');
+        const panel = document.getElementById('face-login-panel');
+        const video = document.getElementById('face-login-video');
+        const canvas = document.getElementById('face-login-canvas');
+        let stream = null;
+
+        async function startCamera() {
+            if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+                alert('Camera is not supported on this browser.');
+                return;
+            }
+            try {
+                stream = await navigator.mediaDevices.getUserMedia({
+                    video: { facingMode: 'user' },
+                    audio: false
+                });
+                video.srcObject = stream;
+                panel.style.display = 'block';
+            } catch (error) {
+                alert('Unable to access camera. Please allow permission and try again.');
+            }
+        }
+
+        function stopCamera() {
+            if (stream) {
+                stream.getTracks().forEach(function(track) {
+                    track.stop();
+                });
+            }
+            stream = null;
+            video.srcObject = null;
+            panel.style.display = 'none';
+        }
+
+        function captureFrameAsDataUrl() {
+            canvas.width = video.videoWidth;
+            canvas.height = video.videoHeight;
+            const context = canvas.getContext('2d');
+            context.drawImage(video, 0, 0, canvas.width, canvas.height);
+            return canvas.toDataURL('image/jpeg', 0.95);
+        }
+
+        faceLoginButton.addEventListener('click', async function() {
+            const emailInput = document.querySelector('input[name="email"]');
+            const email = (emailInput.value || '').trim();
+            if (!email) {
+                alert('Enter your email first, then use face recognition.');
+                emailInput.focus();
+                return;
+            }
+            await startCamera();
+        });
+
+        captureButton.addEventListener('click', async function() {
+            const email = (document.querySelector('input[name="email"]').value || '').trim();
+            if (!email) {
+                alert('Enter your email first.');
+                return;
+            }
+            if (!stream || !video.videoWidth) {
+                alert('Start camera first.');
+                return;
+            }
+            try {
+                const csrf = getCookie('csrftoken');
+                const beginResp = await fetch("{% url 'face_id_login_begin' %}", {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': csrf
+                    },
+                    body: JSON.stringify({ email: email })
+                });
+                const beginData = await beginResp.json();
+                if (!beginResp.ok) {
+                    throw new Error(beginData.error || 'Could not start face login.');
+                }
+
+                const imageData = captureFrameAsDataUrl();
+
+                const finishResp = await fetch("{% url 'face_id_login_finish' %}", {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': csrf
+                    },
+                    body: JSON.stringify({ image_data: imageData })
+                });
+                const finishData = await finishResp.json();
+                if (!finishResp.ok) {
+                    throw new Error(finishData.error || 'Face login failed.');
+                }
+                stopCamera();
+                window.location.href = finishData.redirect_url || '/';
+            } catch (error) {
+                alert(error.message || 'Face login failed.');
+            }
+        });
+
+        cancelButton.addEventListener('click', stopCamera);
+        window.addEventListener('beforeunload', stopCamera);
+    </script>
 
 </body>
 

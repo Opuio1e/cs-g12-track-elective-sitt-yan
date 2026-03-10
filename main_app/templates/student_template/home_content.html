@@ -68,6 +68,75 @@
             <!-- ./col -->
         </div>
         <div class="row">
+            <div class="col-lg-12">
+                <div class="card card-secondary">
+                    <div class="card-header">
+                        <h3 class="card-title">Self Attendance Report</h3>
+                    </div>
+                    <div class="card-body">
+                        <form method="post" action="{% url 'student_report_attendance' %}">
+                            {% csrf_token %}
+                            <div class="row">
+                                <div class="col-md-3">
+                                    <div class="form-group">
+                                        <label for="report_date">Date</label>
+                                        <input id="report_date" type="date" class="form-control" name="report_date" value="{% now 'Y-m-d' %}" required>
+                                    </div>
+                                </div>
+                                <div class="col-md-3">
+                                    <div class="form-group">
+                                        <label for="status">Status</label>
+                                        <select id="status" class="form-control" name="status" required>
+                                            <option value="present">Present</option>
+                                            <option value="absent">Absent</option>
+                                        </select>
+                                    </div>
+                                </div>
+                                <div class="col-md-4">
+                                    <div class="form-group">
+                                        <label for="note">Note (optional)</label>
+                                        <input id="note" type="text" class="form-control" name="note" maxlength="255" placeholder="Brief reason or context">
+                                    </div>
+                                </div>
+                                <div class="col-md-2 d-flex align-items-end">
+                                    <button type="submit" class="btn btn-primary btn-block mb-3">Submit</button>
+                                </div>
+                            </div>
+                        </form>
+
+                        {% if recent_self_reports %}
+                        <div class="table-responsive mt-2">
+                            <table class="table table-sm table-hover">
+                                <thead>
+                                    <tr>
+                                        <th>Date</th>
+                                        <th>Status</th>
+                                        <th>Note</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for report in recent_self_reports %}
+                                    <tr>
+                                        <td>{{ report.date }}</td>
+                                        <td>
+                                            {% if report.status == 'present' %}
+                                            <span class="badge badge-success">Present</span>
+                                            {% else %}
+                                            <span class="badge badge-danger">Absent</span>
+                                            {% endif %}
+                                        </td>
+                                        <td>{{ report.note|default:'-' }}</td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="row">
             <div class="col-lg-6">
            
                         <!-- DONUT CHART -->
@@ -134,7 +203,7 @@ $(document).ready(function(){
       datasets: [
         {
           data: [{{percent_present}}, {{percent_absent}}],
-          backgroundColor : ['#00a65a','#f56954'],
+          backgroundColor : ['#4f97ff', '#8ea2c8'],
         }
       ]
     }
@@ -153,27 +222,27 @@ $(document).ready(function(){
 var areaChartData = {
     labels  : subjects,
     datasets: [
-    {
+      {
         label               : 'Present In Class',
-        backgroundColor     : 'rgba(60,141,188,0.9)',
-        borderColor         : 'rgba(60,141,188,0.8)',
+        backgroundColor     : 'rgba(79,151,255,0.9)',
+        borderColor         : 'rgba(79,151,255,0.85)',
         pointRadius          : false,
-        pointColor          : '#3b8bba',
-        pointStrokeColor    : 'rgba(60,141,188,1)',
+        pointColor          : '#4f97ff',
+        pointStrokeColor    : 'rgba(79,151,255,1)',
         pointHighlightFill  : '#fff',
-        pointHighlightStroke: 'rgba(60,141,188,1)',
+        pointHighlightStroke: 'rgba(79,151,255,1)',
         data                : data_present
       },
 
       {
         label               : 'Absent In Class',
-        backgroundColor     : 'rgba(210, 214, 222, 1)',
-        borderColor         : 'rgba(210, 214, 222, 1)',
+        backgroundColor     : 'rgba(142, 162, 200, 0.95)',
+        borderColor         : 'rgba(142, 162, 200, 1)',
         pointRadius         : false,
-        pointColor          : 'rgba(210, 214, 222, 1)',
-        pointStrokeColor    : '#c1c7d1',
+        pointColor          : 'rgba(142, 162, 200, 1)',
+        pointStrokeColor    : 'rgba(142, 162, 200, 1)',
         pointHighlightFill  : '#fff',
-        pointHighlightStroke: 'rgba(220,220,220,1)',
+        pointHighlightStroke: 'rgba(142,162,200,1)',
         data                : data_absent
       },
     ]

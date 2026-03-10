@@ -506,6 +506,21 @@ def admin_view_attendance(request):
     return render(request, "hod_template/admin_view_attendance.html", context)
 
 
+def admin_view_student_self_reports(request):
+    selected_status = request.GET.get('status', 'all')
+    reports = StudentAttendanceSelfReport.objects.select_related(
+        'student__admin', 'student__course'
+    )
+    if selected_status in {'present', 'absent'}:
+        reports = reports.filter(status=selected_status)
+    context = {
+        'reports': reports,
+        'selected_status': selected_status,
+        'page_title': 'Student Self Attendance Reports'
+    }
+    return render(request, 'hod_template/student_self_reports.html', context)
+
+
 @csrf_exempt
 def get_admin_attendance(request):
     subject_id = request.POST.get('subject')
@@ -592,7 +607,7 @@ def send_student_notification(request):
         url = "https://fcm.googleapis.com/fcm/send"
         body = {
             'notification': {
-                'title': "Student Management System",
+                'title': "Sitt Yan Student Management System",
                 'body': message,
                 'click_action': reverse('student_view_notification'),
                 'icon': static('dist/img/AdminLTELogo.png')
@@ -619,7 +634,7 @@ def send_staff_notification(request):
         url = "https://fcm.googleapis.com/fcm/send"
         body = {
             'notification': {
-                'title': "Student Management System",
+                'title': "Sitt Yan Student Management System",
                 'body': message,
                 'click_action': reverse('staff_view_notification'),
                 'icon': static('dist/img/AdminLTELogo.png')

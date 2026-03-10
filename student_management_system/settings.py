@@ -48,7 +48,7 @@ if not DEBUG and not (_secret_key_from_env or _secret_key_from_dotenv):
     raise ValueError('MY_SECRET_KEY environment variable is required when DEBUG is False.')
 SECRET_KEY = _secret_key_from_env or _secret_key_from_dotenv or 'dev-only-insecure-secret-key'
 
-# ALLOWED_HOSTS = ['smswithdjango.herokuapp.com']
+# ALLOWED_HOSTS = ['github.com/Opuio1e/cs-g12-track-elective-sitt-yan']
 ALLOWED_HOSTS = ['*']  # Not recommended but useful in dev mode
 
 
@@ -181,9 +181,10 @@ EMAIL_PORT = 587
 EMAIL_HOST_USER = os.environ.get('EMAIL_ADDRESS') 
 EMAIL_HOST_PASSWORD = os.environ.get('EMAIL_PASSWORD')
 EMAIL_USE_TLS = True
-# DEFAULT_FROM_EMAIL = "Student Management System <admin@admin.com>"
+# DEFAULT_FROM_EMAIL = "Sitt Yan Student Management System <admin@admin.com>"
 
 STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
 
-prod_db = dj_database_url.config(conn_max_age=500)
-DATABASES['default'].update(prod_db)
+database_url = os.environ.get('DATABASE_URL') or _read_env_value(BASE_DIR / '.env', 'DATABASE_URL')
+if database_url:
+    DATABASES['default'].update(dj_database_url.parse(database_url, conn_max_age=500))

@@ -37,6 +37,7 @@ def student_home(request):
         subject_name.append(subject.name)
         data_present.append(present_count)
         data_absent.append(absent_count)
+    recent_self_reports = StudentAttendanceSelfReport.objects.filter(student=student)[:5]
     context = {
         'total_attendance': total_attendance,
         'percent_present': percent_present,
@@ -46,10 +47,44 @@ def student_home(request):
         'data_present': data_present,
         'data_absent': data_absent,
         'data_name': subject_name,
+        'recent_self_reports': recent_self_reports,
         'page_title': 'Student Homepage'
 
     }
     return render(request, 'student_template/home_content.html', context)
+
+
+def student_report_attendance(request):
+    if request.method != 'POST':
+        return redirect(reverse('student_home'))
+
+    student = get_object_or_404(Student, admin=request.user)
+    report_date = request.POST.get('report_date')
+    status = request.POST.get('status')
+    note = (request.POST.get('note') or '').strip()
+
+    if status not in {'present', 'absent'}:
+        messages.error(request, 'Please select a valid attendance status.')
+        return redirect(reverse('student_home'))
+
+    try:
+        report_date = datetime.strptime(report_date, '%Y-%m-%d').date()
+    except Exception:
+        messages.error(request, 'Please provide a valid date.')
+        return redirect(reverse('student_home'))
+
+    report, created = StudentAttendanceSelfReport.objects.update_or_create(
+        student=student,
+        date=report_date,
+        defaults={'status': status, 'note': note[:255]},
+    )
+
+    if created:
+        messages.success(request, 'Attendance status submitted successfully.')
+    else:
+        messages.success(request, 'Attendance status updated successfully.')
+
+    return redirect(reverse('student_home'))
 
 
 @ csrf_exempt

@@ -26,6 +26,10 @@ class CustomUserForm(FormSettings):
 
     def __init__(self, *args, **kwargs):
         super(CustomUserForm, self).__init__(*args, **kwargs)
+        self.fields['profile_pic'].widget.attrs.update({
+            'accept': 'image/*',
+            'capture': 'user',
+        })
 
         if kwargs.get('instance'):
             instance = kwargs.get('instance').admin.__dict__

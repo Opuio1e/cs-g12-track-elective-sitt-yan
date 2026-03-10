@@ -1,15 +1,21 @@
 import json
-import requests
 from django.contrib import messages
 from django.contrib.auth import authenticate, login, logout
+from django.contrib.auth.decorators import login_required
 from django.http import HttpResponse, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render, reverse
 from django.views.decorators.csrf import csrf_exempt
+from django.views.decorators.http import require_POST
 
 from .EmailBackend import EmailBackend
-from .models import Attendance, Session, Subject
+from .face_auth import cosine_similarity, extract_face_embedding, image_data_to_bgr
+from .forms import StudentForm
+from .models import Attendance, CustomUser, FaceLoginProfile, Session, Subject
 
 # Create your views here.
+
+
+FACE_MATCH_THRESHOLD = 0.72
 
 
 def login_page(request):
@@ -23,29 +29,57 @@ def login_page(request):
     return render(request, 'main_app/login.html')
 
 
+def signup_page(request):
+    if request.user.is_authenticated:
+        return redirect(_redirect_for_user(request.user))
+
+    form = StudentForm(request.POST or None, request.FILES or None)
+    context = {
+        'form': form,
+    }
+
+    if request.method == 'POST':
+        if form.is_valid():
+            first_name = form.cleaned_data.get('first_name')
+            last_name = form.cleaned_data.get('last_name')
+            address = form.cleaned_data.get('address')
+            email = form.cleaned_data.get('email')
+            gender = form.cleaned_data.get('gender')
+            password = form.cleaned_data.get('password')
+            course = form.cleaned_data.get('course')
+            session = form.cleaned_data.get('session')
+            passport = request.FILES.get('profile_pic')
+
+            try:
+                user = CustomUser.objects.create_user(
+                    email=email,
+                    password=password,
+                    user_type=3,
+                    first_name=first_name,
+                    last_name=last_name,
+                    profile_pic=passport,
+                )
+                user.gender = gender
+                user.address = address
+                user.student.course = course
+                user.student.session = session
+                user.save()
+                user.student.save()
+                login(request, user)
+                messages.success(request, 'Your account has been created successfully.')
+                return redirect(reverse('student_home'))
+            except Exception:
+                messages.error(request, 'Sign up failed. Please try again.')
+        else:
+            messages.error(request, 'Please correct the errors in the form.')
+
+    return render(request, 'main_app/signup.html', context)
+
+
 def doLogin(request, **kwargs):
     if request.method != 'POST':
         return HttpResponse("<h4>Denied</h4>")
     else:
-        #Google recaptcha
-        captcha_token = request.POST.get('g-recaptcha-response')
-        captcha_url = "https://www.google.com/recaptcha/api/siteverify"
-        captcha_key = "6LfswtgZAAAAABX9gbLqe-d97qE2g1JP8oUYritJ"
-        data = {
-            'secret': captcha_key,
-            'response': captcha_token
-        }
-        # Make request
-        try:
-            captcha_server = requests.post(url=captcha_url, data=data)
-            response = json.loads(captcha_server.text)
-            if response['success'] == False:
-                messages.error(request, 'Invalid Captcha. Try Again')
-                return redirect('/')
-        except:
-            messages.error(request, 'Captcha could not be verified. Try Again')
-            return redirect('/')
-        
         #Authenticate
         user = EmailBackend.authenticate(request, username=request.POST.get('email'), password=request.POST.get('password'))
         if user != None:
@@ -59,6 +93,102 @@ def doLogin(request, **kwargs):
         else:
             messages.error(request, "Invalid details")
             return redirect("/")
+
+
+def _redirect_for_user(user):
+    if user.user_type == '1':
+        return reverse("admin_home")
+    if user.user_type == '2':
+        return reverse("staff_home")
+    return reverse("student_home")
+
+
+def _extract_embedding_from_payload(payload):
+    image_data = payload.get("image_data")
+    image = image_data_to_bgr(image_data)
+    return extract_face_embedding(image)
+
+
+@login_required
+def face_id_settings(request):
+    profile = FaceLoginProfile.objects.filter(user=request.user).first()
+    context = {
+        "page_title": "Face Login Setup",
+        "profile": profile,
+        "face_match_threshold": int(FACE_MATCH_THRESHOLD * 100),
+    }
+    return render(request, "main_app/face_id_settings.html", context)
+
+
+@require_POST
+@login_required
+def face_id_register_begin(request):
+    request.session["face_register_user"] = request.user.id
+    return JsonResponse({"ok": True})
+
+
+@require_POST
+@login_required
+def face_id_register_finish(request):
+    body = json.loads(request.body.decode("utf-8"))
+    user_id = request.session.get("face_register_user")
+    if user_id != request.user.id:
+        return JsonResponse({"error": "Registration session expired. Try again."}, status=400)
+
+    try:
+        embedding = _extract_embedding_from_payload(body)
+    except ValueError as exc:
+        return JsonResponse({"error": str(exc)}, status=400)
+
+    FaceLoginProfile.objects.update_or_create(
+        user=request.user,
+        defaults={
+            "embedding": embedding,
+        },
+    )
+    request.session.pop("face_register_user", None)
+    return JsonResponse({"ok": True})
+
+
+@require_POST
+def face_id_login_begin(request):
+    body = json.loads(request.body.decode("utf-8"))
+    email = (body.get("email") or "").strip().lower()
+    if not email:
+        return JsonResponse({"error": "Enter your email first."}, status=400)
+    try:
+        user = CustomUser.objects.get(email=email)
+    except CustomUser.DoesNotExist:
+        return JsonResponse({"error": "No account found for this email."}, status=404)
+
+    if not FaceLoginProfile.objects.filter(user=user).exists():
+        return JsonResponse({"error": "Face ID is not enabled for this account yet."}, status=400)
+
+    request.session["face_login_user"] = user.id
+    return JsonResponse({"ok": True})
+
+
+@require_POST
+def face_id_login_finish(request):
+    body = json.loads(request.body.decode("utf-8"))
+    user_id = request.session.get("face_login_user")
+    if not user_id:
+        return JsonResponse({"error": "Authentication session expired. Try again."}, status=400)
+
+    profile = get_object_or_404(FaceLoginProfile, user_id=user_id)
+    try:
+        probe_embedding = _extract_embedding_from_payload(body)
+    except ValueError as exc:
+        return JsonResponse({"error": str(exc)}, status=400)
+
+    score = cosine_similarity(profile.embedding, probe_embedding)
+    if score < FACE_MATCH_THRESHOLD:
+        return JsonResponse({"error": "Face match failed. Try again with good lighting and camera angle."}, status=401)
+
+    user = profile.user
+    login(request, user)
+    request.session.pop("face_login_user", None)
+    return JsonResponse({"ok": True, "redirect_url": _redirect_for_user(user), "score": round(score, 3)})
 
 
 

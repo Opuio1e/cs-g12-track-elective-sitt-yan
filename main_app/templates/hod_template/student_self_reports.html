@@ -1,0 +1,68 @@
+{% extends 'main_app/base.html' %}
+{% block page_title %}{{ page_title }}{% endblock page_title %}
+
+{% block content %}
+<section class="content">
+    <div class="container-fluid">
+        <div class="row">
+            <div class="col-md-12">
+                <div class="card card-primary">
+                    <div class="card-header">
+                        <h3 class="card-title">{{ page_title }}</h3>
+                    </div>
+                    <div class="card-body">
+                        <form method="get" class="form-inline mb-3">
+                            <label for="status" class="mr-2">Filter Status</label>
+                            <select id="status" name="status" class="form-control mr-2">
+                                <option value="all" {% if selected_status == 'all' %}selected{% endif %}>All</option>
+                                <option value="present" {% if selected_status == 'present' %}selected{% endif %}>Present</option>
+                                <option value="absent" {% if selected_status == 'absent' %}selected{% endif %}>Absent</option>
+                            </select>
+                            <button type="submit" class="btn btn-primary">Apply</button>
+                        </form>
+
+                        <div class="table-responsive">
+                            <table class="table table-bordered table-hover">
+                                <thead>
+                                    <tr>
+                                        <th>SN</th>
+                                        <th>Date</th>
+                                        <th>Student</th>
+                                        <th>Course</th>
+                                        <th>Status</th>
+                                        <th>Note</th>
+                                        <th>Updated</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for report in reports %}
+                                    <tr>
+                                        <td>{{ forloop.counter }}</td>
+                                        <td>{{ report.date }}</td>
+                                        <td>{{ report.student.admin.last_name }}, {{ report.student.admin.first_name }}</td>
+                                        <td>{{ report.student.course }}</td>
+                                        <td>
+                                            {% if report.status == 'present' %}
+                                            <span class="badge badge-success">Present</span>
+                                            {% else %}
+                                            <span class="badge badge-danger">Absent</span>
+                                            {% endif %}
+                                        </td>
+                                        <td>{{ report.note|default:'-' }}</td>
+                                        <td>{{ report.updated_at }}</td>
+                                    </tr>
+                                    {% empty %}
+                                    <tr>
+                                        <td colspan="7" class="text-center">No self-reports found.</td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+{% endblock content %}

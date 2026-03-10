@@ -1,0 +1,165 @@
+{% extends 'main_app/base.html' %}
+{% block page_title %}{{ page_title }}{% endblock page_title %}
+
+{% block content %}
+<section class="content">
+    <div class="container-fluid">
+        <div class="row">
+            <div class="col-md-12">
+                <div class="card card-primary">
+                    <div class="card-header">
+                        <h3 class="card-title">Enable Server Face Login</h3>
+                    </div>
+                    <div class="card-body">
+                        <p class="mb-2">Capture your face once and this account can sign in with camera matching on the server (Python + NumPy/OpenCV).</p>
+                        <p class="text-muted mb-3">Best accuracy comes from a well-lit, front-facing photo. Match threshold: {{ face_match_threshold }}% similarity.</p>
+                        <button id="start-enroll" class="btn btn-primary">Capture Face Profile</button>
+                        <div id="enroll-panel" class="mt-3" style="display: none; max-width: 560px;">
+                            <video id="enroll-video" autoplay playsinline class="w-100" style="border-radius: 8px;"></video>
+                            <canvas id="enroll-canvas" style="display: none;"></canvas>
+                            <div class="mt-2">
+                                <button id="capture-enroll" class="btn btn-success" type="button">Save Face Profile</button>
+                                <button id="cancel-enroll" class="btn btn-default" type="button">Cancel</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-12">
+                <div class="card card-secondary">
+                    <div class="card-header">
+                        <h3 class="card-title">Registered Face Profile</h3>
+                    </div>
+                    <div class="card-body">
+                        <div class="table-responsive">
+                            <table class="table table-bordered table-hover">
+                                <thead>
+                                    <tr>
+                                        <th>Status</th>
+                                        <th>Created</th>
+                                        <th>Last Updated</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% if profile %}
+                                    <tr>
+                                        <td>Active</td>
+                                        <td>{{ profile.created_at }}</td>
+                                        <td>{{ profile.updated_at }}</td>
+                                    </tr>
+                                    {% else %}
+                                    <tr>
+                                        <td colspan="3" class="text-center">No face profile registered yet.</td>
+                                    </tr>
+                                    {% endif %}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+{% endblock content %}
+
+{% block custom_js %}
+<script>
+    function getCookie(name) {
+        const value = '; ' + document.cookie;
+        const parts = value.split('; ' + name + '=');
+        if (parts.length === 2) {
+            return parts.pop().split(';').shift();
+        }
+        return null;
+    }
+
+    const startBtn = document.getElementById('start-enroll');
+    const captureBtn = document.getElementById('capture-enroll');
+    const cancelBtn = document.getElementById('cancel-enroll');
+    const panel = document.getElementById('enroll-panel');
+    const video = document.getElementById('enroll-video');
+    const canvas = document.getElementById('enroll-canvas');
+    let stream = null;
+
+    async function startCamera() {
+        if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+            alert('Camera is not supported on this browser.');
+            return;
+        }
+        try {
+            stream = await navigator.mediaDevices.getUserMedia({
+                video: { facingMode: 'user' },
+                audio: false
+            });
+            video.srcObject = stream;
+            panel.style.display = 'block';
+        } catch (error) {
+            alert('Unable to access camera. Please allow permission and try again.');
+        }
+    }
+
+    function stopCamera() {
+        if (stream) {
+            stream.getTracks().forEach(function(track) {
+                track.stop();
+            });
+        }
+        stream = null;
+        video.srcObject = null;
+        panel.style.display = 'none';
+    }
+
+    function captureFrameAsDataUrl() {
+        canvas.width = video.videoWidth;
+        canvas.height = video.videoHeight;
+        const context = canvas.getContext('2d');
+        context.drawImage(video, 0, 0, canvas.width, canvas.height);
+        return canvas.toDataURL('image/jpeg', 0.95);
+    }
+
+    startBtn.addEventListener('click', startCamera);
+    cancelBtn.addEventListener('click', stopCamera);
+
+    captureBtn.addEventListener('click', async function() {
+        if (!stream || !video.videoWidth) {
+            alert('Start camera first.');
+            return;
+        }
+        try {
+            const csrf = getCookie('csrftoken');
+            const beginResp = await fetch("{% url 'face_id_register_begin' %}", {
+                method: 'POST',
+                headers: {
+                    'X-CSRFToken': csrf
+                }
+            });
+            const beginData = await beginResp.json();
+            if (!beginResp.ok) {
+                throw new Error(beginData.error || 'Could not start face setup.');
+            }
+
+            const imageData = captureFrameAsDataUrl();
+            const finishResp = await fetch("{% url 'face_id_register_finish' %}", {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': csrf
+                },
+                body: JSON.stringify({ image_data: imageData })
+            });
+            const result = await finishResp.json();
+            if (!finishResp.ok) {
+                throw new Error(result.error || 'Face setup failed.');
+            }
+            stopCamera();
+            alert('Face login profile saved successfully.');
+            window.location.reload();
+        } catch (error) {
+            alert(error.message || 'Face setup failed.');
+        }
+    });
+
+    window.addEventListener('beforeunload', stopCamera);
+</script>
+{% endblock custom_js %}

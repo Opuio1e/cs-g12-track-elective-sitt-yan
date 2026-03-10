@@ -4,5 +4,8 @@ virtualenv
 dj-database-url
 gunicorn
 whitenoise
-Pillow
+ Pillow
 requests
+webauthn
+numpy
+opencv-python-headless
